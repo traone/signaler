@@ -1,0 +1,5 @@
+# This is included for signaler development purposes.
+signaler:
+  build: .
+  environment:
+    GENERATOR: self-signed
