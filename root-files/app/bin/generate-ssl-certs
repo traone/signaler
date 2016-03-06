@@ -1,0 +1,111 @@
+#!/bin/bash
+
+set -e
+
+# Define these in Dockerfile or env:
+#GENERATOR='self-signed'
+#CA_FOLDER="$(pwd)/data/ca"
+#CERT_FOLDER="$(pwd)/data/certs"
+
+##
+# Generates all necessary files for ssl certificate
+# $1 - Domain name for certificate. For example: 'wordpress.dev'
+# $2 - Certificate folder. Default: /data/certs/
+# $3 - Certificate folder. Default: /data/ca/
+##
+function generate_ssl_files() {
+  local domain=$1
+  local folder=$2
+  local ca_folder=$3
+  
+  cd $folder
+
+  # Check if wildcard
+  if [[ ${domain:0:2} == "*." ]]
+  then
+    wildcard=true
+    # Remove wildcard part
+    domain=${domain:2}
+  else
+    wildcard=false
+  fi
+
+  echo "Generating $folder/$domain.crt"
+
+  if [ ! -f "$domain.key" ]
+  then
+    openssl genrsa -out $domain.key 2048
+  fi
+
+  if [ -f "$domain.key" ] && [ ! -f "$domain.csr" ]
+  then
+    if $wildcard
+    then
+      # We want to create wildcard certificates which provide authority for both:
+      # domain.dev
+      # *.domain.dev
+      # To create multiple entries we need config files
+      # Explained: http://stackoverflow.com/a/9158662/1337062
+      generate_ssl_config_for_wildcard $domain $domain.cnf
+      openssl req -new -sha256 -nodes -config $domain.cnf \
+              -key $domain.key -out $domain.csr
+    else 
+      openssl req -new -sha256 -nodes -key $domain.key -out $domain.csr \
+              -subj "/O=Signaler/OU=self-signed by onnimonni-signaler/CN=$domain"
+    fi
+  fi
+
+  if [ -f "$domain.csr" ] && [ ! -f "$domain.crt" ]
+  then
+    openssl x509 -sha256 -req -days 7300 -set_serial 01 \
+            -CA $ca_folder/ca.crt -CAkey $ca_folder/ca.key \
+            -in $domain.csr -out $domain.crt
+  fi
+}
+
+##
+# Generates openssl.cnf for domain request
+# This is needed so that we can create wildcard certificates
+# $1 - Domain name
+# $2 - certificates path
+##
+function generate_ssl_config_for_wildcard() {
+local domain=$1
+local config_file_path=$2
+
+cat << EOF > $config_file_path
+[req]
+distinguished_name = req_distinguished_name
+x509_extensions = v3_req
+prompt = no
+[req_distinguished_name]
+CN = *.$domain
+
+[v3_req]
+keyUsage = keyEncipherment, dataEncipherment
+extendedKeyUsage = serverAuth
+subjectAltName = @alt_names
+[alt_names]
+DNS.1 = $domain
+EOF
+
+}
+
+# Read all domains from
+while read line; do
+  # Trim whitespace
+  line=$(echo $line)
+  if [[ "$line" =~ \#.* ]]
+  then
+    continue
+  else
+    domain=$line
+  fi
+  echo "Checking $domain"
+
+  if [[ "$GENERATOR" == "self-signed" ]]
+  then
+    generate_ssl_files $domain $CERT_FOLDER $CA_FOLDER
+  fi
+
+done < $1

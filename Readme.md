@@ -23,7 +23,7 @@ $ docker run -e VIRTUAL_HOST=example.dev -e HTTPS_HOST=example.dev ...
 Now you can use https://example.dev when connecting to your container.
 
 ## HTTPS for all virtual hosts
-Set ```HTTPS_ALL_HOSTS=true``` to generate certificates for all comma separated domains in ```VIRTUAL_HOST``` variable.
+Set ```HTTPS_ALL_HOSTS=1``` to generate certificates for all comma separated domains in ```VIRTUAL_HOST``` variable.
 
 ## Features
 - Creates one ca.key and ca.crt which you can optionally add to your trusted keychain.

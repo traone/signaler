@@ -1,0 +1,19 @@
+##
+# HTTPS DOMAINS LIST
+# Docker container: onnimonni/signaler
+# This file contains all active certificates.
+# Lines starting with '#' are comments and are skipped.
+# Empty lines are skipped too.
+##
+{{/* Write certificates for all HTTPS_HOST domains */}}
+{{ range $host, $containers := groupByMulti $ "Env.HTTPS_HOST" "," }}
+{{ trim $host }}
+{{ end }}
+{{/* Write all hosts which use HTTPS_ALL_HOSTS option without HTTPS_HOST */}}
+{{ range $host, $containers := groupByMulti $ "Env.HTTPS_ALL_HOSTS" "," }}
+  {{ range $index, $value := $containers }}
+    {{ range $domain := split $value.Env.VIRTUAL_HOST "," }}
+{{ trim $domain }}
+    {{ end }}
+  {{ end }}
+{{ end }}
