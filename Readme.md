@@ -37,3 +37,6 @@ Set ```HTTPS_ALL_HOSTS=true``` to generate certificates for all comma separated 
 # Run build command in this project directory
 $ docker-compose build
 ```
+
+## License
+MIT
