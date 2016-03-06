@@ -1,6 +1,4 @@
 # Signaler
-**THIS IS NOT WORKING YET, WAIT FOR STABLE RELEASE!**
-
 Docker container for automatic ssl certificates. Use this in development environment to test **https** connections in local deveplopment. [jwilder/docker-gen](This uses https://github.com/jwilder/docker-gen) to read configs of new containers. This works well with [jwilder/nginx-proxy](https://github.com/jwilder/nginx-proxy).
 
 ## How to use
