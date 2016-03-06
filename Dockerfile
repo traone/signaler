@@ -23,6 +23,9 @@ ADD docker-entrypoint.sh /
 # Create necessary folders to avoid errors
 RUN mkdir -p $CERT_FOLDER && mkdir -p $CA_FOLDER
 
+# Remove entrypoint from parent
+# Parent image gives many nice features if you want to run it as a tool
+# We only want to start this image without many parameters
 ENTRYPOINT []
 
 CMD ["/docker-entrypoint.sh"]
