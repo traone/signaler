@@ -20,13 +20,23 @@ function generate_ssl_files() {
   
   cd $folder
 
+  # Check if wildcard
+  if [[ ${domain:0:2} == "*." ]]
+  then
+    wildcard=true
+    # Remove wildcard part
+    domain=${domain:2}
+  else
+    wildcard=false
+  fi
+
   echo "Generating $folder/$domain.crt"
 
   # We want to create wildcard certificates which provide authority for both:
   # domain.dev
   # *.domain.dev
   # This combination is a bit tricky
-  generate_ssl_config $domain $domain.cnf $CA_FOLDER
+  generate_ssl_config $domain $wildcard $domain.cnf $CA_FOLDER
 
   if [ ! -f "$domain.key" ] || [ ! -f "$domain.csr" ]
   then
@@ -56,8 +66,9 @@ function generate_ssl_files() {
 ##
 function generate_ssl_config() {
 local domain=$1
-local config_file_path=$2
-local ca_folder=$3
+local wildcard=$2
+local config_file_path=$3
+local ca_folder=$4
 
 # Remove contents of index.txt
 #cp /dev/null /data/ca/index.txt
@@ -107,21 +118,11 @@ subjectAltName = @alt_names
 DNS.1 = $domain
 EOF
 
-# Check if wildcard
-if [[ ${domain:0:2} == "*." ]]
-then
-  wildcard=true
-  # Remove wildcard part
-  domain=${domain:2}
-else
-  wildcard=false
-fi
-
-# Add base domain too if it's wildcard
+# Add wildcard too if it's specified
 if $wildcard
 then
   cat << EOF >> $config_file_path
-DNS.2 = $domain
+DNS.2 = *.$domain
 EOF
 fi
 
