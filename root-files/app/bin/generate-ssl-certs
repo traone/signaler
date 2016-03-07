@@ -32,44 +32,29 @@ function generate_ssl_files() {
 
   echo "Generating $folder/$domain.crt"
 
-  if $wildcard
-    then
-    # We want to create wildcard certificates which provide authority for both:
-    # domain.dev
-    # *.domain.dev
-    # This combination is a bit tricky
-    generate_ssl_config_for_wildcard $domain /tmp/$domain.cnf $CA_FOLDER
+  # We want to create wildcard certificates which provide authority for both:
+  # domain.dev
+  # *.domain.dev
+  # This combination is a bit tricky
+  generate_ssl_config $domain $wildcard $domain.cnf $CA_FOLDER
 
-    if [ ! -f "$domain.key" ] || [ ! -f "$domain.csr" ]
-    then
-      openssl req -new -sha256 -nodes -newkey rsa:2048 \
-              -keyout $domain.key -out $domain.csr -config /tmp/$domain.cnf
-    fi
-
-    if [ -f "$domain.csr" ] && [ ! -f "$domain.crt" ]
-    then
-      # openssl has some bugs causing it to crash on second certificate creation
-      # This is just for local development so we don't need any of these fancier features
-      cp /dev/null $CA_FOLDER/index.txt
-      echo 01 > $CA_FOLDER/serial
-      openssl ca -batch -out $domain.crt -config /tmp/$domain.cnf -extensions v3_req -infiles $domain.csr
-    fi
-  else
-    if [ ! -f "$domain.key" ] && [ ! -f "$domain.csr" ]
-    then
-      # Normal certificates only allow trusted connection for one domain
-      openssl req -new -sha256 -nodes -out $domain.csr \
-              -newkey rsa:2048 -keyout $domain.key \
-              -subj "/O=Signaler/OU=self-signed by onnimonni-signaler/CN=$domain"
-    fi
-
-    if [ -f "$domain.csr" ] && [ ! -f "$domain.crt" ]
-    then
-      openssl x509 -sha256 -req -days 7300 -set_serial 01 \
-              -CA $ca_folder/ca.crt -CAkey $ca_folder/ca.key \
-              -in $domain.csr -out $domain.crt
-    fi
+  if [ ! -f "$domain.key" ] || [ ! -f "$domain.csr" ]
+  then
+    openssl req -new -sha256 -nodes -newkey rsa:2048 \
+            -keyout $domain.key -out $domain.csr -config $domain.cnf
   fi
+
+  if [ -f "$domain.csr" ] && [ ! -f "$domain.crt" ]
+  then
+    # openssl has some bugs causing it to crash on second certificate creation
+    # This is just for local development so we don't need any of these fancier features
+    cp /dev/null $CA_FOLDER/index.txt
+
+    openssl ca -batch -out $domain.crt -config $domain.cnf -extensions v3_req -infiles $domain.csr
+    # Add full chain to new cert
+    cat $CA_FOLDER/ca.crt >> $domain.crt
+  fi
+
 }
 
 ##
@@ -79,10 +64,11 @@ function generate_ssl_files() {
 # $2 - certificates path
 # $3 - Root CA folder. Default: /data/ca/
 ##
-function generate_ssl_config_for_wildcard() {
+function generate_ssl_config() {
 local domain=$1
-local config_file_path=$2
-local ca_folder=$3
+local wildcard=$2
+local config_file_path=$3
+local ca_folder=$4
 
 # Remove contents of index.txt
 #cp /dev/null /data/ca/index.txt
@@ -106,21 +92,39 @@ default_days = 7300
 policy = policy_anything
 
 [ policy_anything ]
+countryName   = optional
+stateOrProvinceName = optional
+localityName    = optional
+organizationName  = optional
+organizationalUnitName  = optional
+commonName    = supplied
+emailAddress    = optional
 
 [req]
 distinguished_name = req_distinguished_name
 x509_extensions = v3_req
 prompt = no
+
 [req_distinguished_name]
-CN = *.$domain
+O = Signaler Self-made Certificate
+OU = Self-signed by onnimonni-signaler
+CN = $domain
+
 [v3_req]
 keyUsage = keyEncipherment, dataEncipherment
 extendedKeyUsage = serverAuth
 subjectAltName = @alt_names
 [alt_names]
-DNS.1 = *.$domain
-DNS.2 = $domain
+DNS.1 = $domain
 EOF
+
+# Add wildcard too if it's specified
+if $wildcard
+then
+  cat << EOF >> $config_file_path
+DNS.2 = *.$domain
+EOF
+fi
 
 }
 
