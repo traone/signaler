@@ -1,4 +1,8 @@
 # Signaler
+[![onnimonni/signaler docker image](http://dockeri.co/image/onnimonni/signaler)](https://registry.hub.docker.com/u/onnimonni/signaler/)
+
+[![License](http://img.shields.io/:license-mit-blue.svg?style=flat-square)](http://badges.mit-license.org)
+
 Docker container for automatic ssl certificates. Use this in development environment to test **https** connections in local deveplopment. [jwilder/docker-gen](This uses https://github.com/jwilder/docker-gen) to read configs of new containers. This works well with [jwilder/nginx-proxy](https://github.com/jwilder/nginx-proxy).
 
 This helps you to notice mixed content errors in development and avoid problems when your production is configured to use https connections.
@@ -21,6 +25,30 @@ $ docker run -e VIRTUAL_HOST=example.dev -e HTTPS_HOST=example.dev ...
 ```
 
 Now you can use https://example.dev when connecting to your container.
+
+
+## How to add self-generated ca.key as trusted root (for dummies including me)
+Sometimes the software you are using won't work correctly if the certificate is not trusted. Sometimes you want to do this just because it's convenient. Usually self-generated certificates will look like this:
+
+![non-trusted https](https://cloud.githubusercontent.com/assets/5691777/13670188/1b042b48-e6d1-11e5-804e-542781b85ff5.png)
+
+If you want to trust these self-generated certificates so that your browser and other tooling (like curl) will accept them you can add the certificate in your trusted certificates. Then it will look like this instead:
+
+![self trusted https](https://cloud.githubusercontent.com/assets/5691777/13670189/1d697032-e6d1-11e5-99b5-aef757cb7f53.png)
+
+**NOTICE: This will open a small attack vector against your machine where MITM can succesfully deceive any of your https connections. Do not give your self-generated ca.key to anyone else!**
+
+### Trust certificates in OS-X
+First mount the `/data/ca/ca.key` path from container to your machine for example `~/ca/ca.crt`.
+```
+$ sudo security add-trusted-cert -d -r trustRoot -k '/Library/Keychains/System.keychain' ~/ca/ca.crt
+```
+
+### Trust certificates in Linux (Ubuntu)
+First mount the `/data/ca/ca.key` path from container to your machine for example `~/ca/ca.crt`.
+```
+sudo cp ~/ca/ca.crt /usr/local/share/ca-certificates/ && sudo update-ca-certificates
+```
 
 ## HTTPS for all virtual hosts
 Set ```HTTPS_ALL_HOSTS=1``` to generate certificates for all comma separated domains in ```VIRTUAL_HOST``` variable.
